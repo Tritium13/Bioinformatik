@@ -1,3 +1,5 @@
+# finding a most frequent pattern in DNA sequence
+
 seq = str(input("Input sequence: "))
 k = int(input("Input lenght of pattern: "))
 
