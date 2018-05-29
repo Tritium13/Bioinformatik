@@ -13,6 +13,7 @@ nt = "ACGT"
 permutations = itertools.product(nt, repeat=k)
 
 kmers = []
+
 for i, j in enumerate(list(permutations)):
     kmer = ""
     for item in j:
@@ -29,12 +30,7 @@ def pattern_to_number(pattern):
 
     if not pattern:
         return 0
-
     return 4 * pattern_to_number(pattern[:-1]) + sym_to_num[pattern[-1]]
-
-
-#if __name__ == "__main__":
-#    print(pattern_to_number(text))
 
 
 def frequency_array(text, k):

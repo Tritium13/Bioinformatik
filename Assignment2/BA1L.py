@@ -1,7 +1,7 @@
 # Implement Pattern to Number (Rosalind BA1L)
 
-dna_seq = str(input("Input sequence: "))
-dna_seq = str.upper(dna_seq)
+text = str(input("Input sequence: "))
+text = str.upper(text)
 
 
 sym_to_num = {"A": 0, "C": 1, "G": 2, "T": 3}
@@ -16,4 +16,4 @@ def pattern_to_number(pattern):
 
 
 if __name__ == "__main__":
-    print(pattern_to_number(dna_seq))
+    print(pattern_to_number(text))
