@@ -1,0 +1,179 @@
+// Query usage of the individual channels; general definitions
+
+path = File.openDialog("Select a File");
+title = getDirectory(path)
+Dialog.create("Image suffix")
+  Dialog.addString("Project:", title);
+  Dialog.addChoice("Al488:", newArray("BRP", "GFP", "GluRIIA", "GluRIID", "Tubulin", "other"));
+  Dialog.addChoice("Cy3:", newArray("GluRIID", "GluRIIA", "BRP", "RBP", "other"));
+  Dialog.addChoice("HRP647:", newArray("HRP", "other"));
+  Dialog.show();
+  title = Dialog.getString();
+  C1 = Dialog.getChoice()
+  C2 = Dialog.getChoice()
+  C3 = Dialog.getChoice()
+
+
+
+print("Ch1: " + C1, "Ch1: " + C2 , "Ch3: " +  C3)
+
+
+
+//is working---------------------------------------------------------------------------------------------------------//
+
+
+// lif into tiff macro
+
+macro "Break up a lif into individual TIFF" {
+// open the file manager to select a lif file to break it into TIFFs
+// in this case, only the metadata specific to a series will be written
+
+run("Bio-Formats Macro Extensions");
+Ext.setId(path);
+Ext.getCurrentFile(file);
+Ext.getSeriesCount(seriesCount);
+
+for (k = 0; k <= seriesCount; k++) {
+// Bio-Formats Importer uses an argument that can be built by concatenate a set of strings
+run("Bio-Formats Importer", "open=&path autoscale color_mode=Colorized view=Hyperstack stack_order=XYCZT series_"+k);
+out_path = getDirectory("image") + getTitle() + ".tif";
+
+// ending of reading out a tiff from a lif
+
+
+//is working---------------------------------------------------------------------------------------------------------//
+
+
+// starting of substract background for extracted tiff
+
+	run("Z Project...", "projection=[Max Intensity]");
+	run("Set Scale...", "distance=0 known=0 pixel=1 unit=pixel");
+	
+	size = 40;
+	max = newArray(0,0,0); // as many zeros as there are slices
+	
+	setSlice(1);
+	IJ.deleteRows(0, 500);
+
+	Target = getImageID();
+	selectImage(Target);
+	run("Select None");
+	width = getWidth;
+	height = getHeight;
+	setTool("point");
+
+	if (roiManager("count")!= 0){
+		roiManager("Select All");
+		roiManager("Delete");
+	}
+
+	for (jj = 1;jj <= nSlices; jj++){
+		setSlice(jj);
+		run("Set Measurements...", "min redirect=None decimal=3");
+		run("Measure");
+		max[jj - 1] = getResult("Max", jj - 1);
+		//print(max[jj-1]);
+	}
+
+	setSlice(1);
+
+	selectImage(Target);
+	waitForUser('Make three point selections \nin the source image, holding down [Alt]');
+	getSelectionCoordinates(xPoints,yPoints);
+	sourceX1 = xPoints[0];
+	sourceY1 = yPoints[0];
+	sourceX2 = xPoints[1];
+	sourceY2 = yPoints[1];
+	sourceX3 = xPoints[2];
+	sourceY3 = yPoints[2];
+
+	roiManager("Add");
+
+	run("Set Measurements...", "mean redirect=None decimal=3");
+	roiManager("Measure");
+	for (i = 3; i<nResults; i++){
+			x=getResult('X', i);
+			y=getResult('Y', i);
+			makeOval(x-size / 2, y-size / 2, size, size);
+			roiManager("Add");
+	}
+
+roiManager("Select",0);
+roiManager("Delete");
+
+for (ii = 1; ii <= nSlices; ii++){
+	IJ.deleteRows(0, 10);
+	setSlice(ii);
+	run("Set Measurements...", "mean redirect=None decimal=3");
+	//roiManager("Select All");
+	roiManager("Measure");
+	first = getResult("Mean",0);
+	second = getResult("Mean",1);
+	third = getResult("Mean",2);
+	
+	avg = (first + second + third) / 3;
+	run("Subtract...", "value=avg slice");
+
+	fctr = max[ii - 1]/(max[ii - 1] - avg);
+	run("Multiply...", "value=fctr slice");
+	//IJ.deleteRows(0, 10);
+	//print(fctr);
+	IJ.deleteRows(0, 10);
+}
+run("Set Scale...", "distance=10 known=1 pixel=1 unit=µm");
+run("Split Channels");
+
+// ending of substract background
+
+
+//is working---------------------------------------------------------------------------------------------------------//
+
+
+// saving channel-images with correct suffix
+
+chnumber = getList("image.titles");
+id = getTitle();
+id1 = substring(id, 7);
+folder = substring(id, 18);
+directory = title + folder + "/";
+
+for (c = 0; c <= 2; c++) {
+cn = c + 1;
+
+selectWindow("C" + cn + "-MAX_" + id1);
+
+getLut(reds, greens, blues); 
+	if (greens[254] == 254) {
+		rename(id1 + "_" + C1);
+		idch1 = getTitle();
+		image1 = substring(idch1, 11);
+		File.makeDirectory(title + folder)
+  		saveAs("Tiff", directory + image1);
+		close();
+		}
+	else if (reds [254] == 254) {
+		rename(id1 + "_" + C2);
+		idch2 = getTitle();
+		image2 = substring(idch2, 11); 
+  		saveAs("Tiff", directory + image2);
+		close();
+		}
+	else if (blues [254] == 254) {
+		rename(id1 + "_" + C3);
+		idch3 = getTitle();
+		image3 = substring(idch3, 11); 
+  		saveAs("Tiff", directory + image3);
+		close();
+		}
+	}
+run("Close All");
+}
+
+
+//is working---------------------------------------------------------------------------------------------------------//
+
+
+showMessage("Finished splitting channels!");
+}
+
+// end of macro
