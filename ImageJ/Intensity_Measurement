@@ -1,0 +1,77 @@
+// Ask the user to choose a directory
+inputDir = getDirectory("Choose a directory containing images:");
+
+// Check if the user canceled the dialog
+if (inputDir == "") {
+    exit("User canceled.");
+}
+
+// Create a dialog to input the threshold percentage
+Dialog.create("Set Threshold");
+Dialog.addSlider("Threshold Percentage:", 0, 100, 50); // Add a slider
+Dialog.show();
+
+tissueThreshPerc = 100 - Dialog.getNumber();
+nBins = 65535;
+
+// Process images in the selected directory
+list = getFileList(inputDir);
+for (i = 0; i < list.length; i++) {
+    if (endsWith(list[i], ".czi")) {
+        // Open the CZI file using Bio-Formats Macro Extensions with specified options
+        run("Bio-Formats Importer", "open=[" + inputDir + list[i] + "] color_mode=Default rois_import=[ROI manager] view=Hyperstack stack_order=XYCZT");
+
+        run("Duplicate...", "title=duplicate");
+
+        // Close the original image
+        close();
+        
+        // Input a tissue threshold percentage 0-100
+        tissueThreshPerc = 80;
+        nBins = 65535;
+        getHistogram(values, count, nBins);
+        size = count.length;
+        
+        // Find cumulative sum
+        cumSum = 0;
+        for (j = 0; j < count.length; j++) {
+            cumSum += count[j];
+        }
+        tissueValue = cumSum * tissueThreshPerc / 100;
+        cumSumValues = count;
+        for (j = 1; j < count.length; j++) {
+            cumSumValues[j] += cumSumValues[j - 1];
+        }
+        
+        var validThresholdIndex = -1; // Initialize with an invalid value
+        
+        for (j = 0; j < cumSumValues.length; j++) {
+            if (cumSumValues[j] >= tissueValue) {
+                // Output tissue threshold and index in Results Table:
+                print("Tissue Threshold Index: " + j);
+                print("Tissue Threshold Value: " + values[j]);
+                
+                // Set the lower threshold value in the threshold window
+                setThreshold(values[j], 65535);
+                
+                // Set Measurements and Measuring
+                run("Set Measurements...", "area mean min limit display redirect=None decimal=3");
+		        run("Measure");
+                
+                validThresholdIndex = nResults; // Store the index of valid threshold result
+                
+                break;
+            }
+        }
+        
+        // Convert to binary
+        run("Make Binary");
+        
+        // Close the duplicate image
+        close();
+    }
+}
+
+// Save the results table
+saveAs("Results", inputDir + "results.txt");
+Table.reset("Results")
